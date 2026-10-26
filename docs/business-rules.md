@@ -33,7 +33,7 @@ Mon-Foyer est un outil de **suivi** financier. Il ne déplace jamais d'argent r�
 
 ## Sécurité
 
-10. **Autorisation côté serveur** — Chaque requête est authentifiée par une garde globale (session Better Auth vérifiée en base). Chaque accès à un foyer passe par `HouseholdMembersService.requireMembership`.
+10. **Autorisation côté serveur** — Chaque requête est authentifiée par une garde globale (jeton de session Clerk : signature, expiration et origine vérifiées). Chaque accès à un foyer passe par `HouseholdMembersService.requireMembership`.
     - Un non-membre reçoit une erreur `404`, qui ne révèle pas l'existence du foyer.
     - Un rôle insuffisant reçoit une erreur `403`.
 - **Invitations**

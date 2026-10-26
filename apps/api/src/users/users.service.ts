@@ -13,7 +13,7 @@ export class UsersService {
         id: true,
         name: true,
         email: true,
-        image: true,
+        imageUrl: true,
         defaultCurrency: true,
         createdAt: true,
       },

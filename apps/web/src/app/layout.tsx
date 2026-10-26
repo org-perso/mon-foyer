@@ -1,3 +1,5 @@
+import { ClerkProvider } from "@clerk/nextjs";
+import { frFR } from "@clerk/localizations";
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
@@ -23,8 +25,23 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
-    </html>
+    <ClerkProvider
+      localization={frFR}
+      appearance={{
+        variables: {
+          colorPrimary: "var(--primary)",
+          colorBackground: "var(--surface)",
+          colorForeground: "var(--foreground)",
+          colorMutedForeground: "var(--muted)",
+          colorDanger: "var(--danger)",
+          borderRadius: "0.75rem",
+          fontFamily: "var(--font-geist-sans)",
+        },
+      }}
+    >
+      <html lang="fr" className={`${geistSans.variable} h-full antialiased`}>
+        <body className="flex min-h-full flex-col font-sans">{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }

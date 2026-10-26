@@ -15,7 +15,7 @@ async function PersonalSummary() {
   try {
     report = await apiFetch<MonthlyReportSummary>("/reports/monthly");
   } catch (e) {
-    if (e instanceof ApiError && e.status === 401) redirect("/login?next=/dashboard");
+    if (e instanceof ApiError && e.status === 401) redirect("/login");
     throw e;
   }
   return (

@@ -1,27 +1,24 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.session_token"];
+const isProtectedRoute = createRouteMatcher([
+  "/dashboard(.*)",
+  "/transactions(.*)",
+  "/reports(.*)",
+  "/household(.*)",
+  "/settings(.*)",
+]);
 
 /**
- * Redirection optimiste : sans cookie de session, inutile d'afficher l'app.
- * Ce n'est PAS un contrôle de sécurité : l'API vérifie la session à chaque requête.
+ * Sans session Clerk valide, les pages de l'application redirigent vers /login.
+ * Les données restent protégées par l'API, qui revérifie le jeton à chaque requête.
  */
-export function proxy(request: NextRequest) {
-  const hasSession = SESSION_COOKIES.some((name) => request.cookies.has(name));
-  if (!hasSession) {
-    const url = new URL("/login", request.url);
-    url.searchParams.set("next", request.nextUrl.pathname);
-    return NextResponse.redirect(url);
-  }
-  return NextResponse.next();
-}
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) await auth.protect();
+});
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/transactions/:path*",
-    "/reports/:path*",
-    "/household/:path*",
-    "/settings/:path*",
+    // Toutes les pages sauf les fichiers statiques et internes de Next.js
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
   ],
 };

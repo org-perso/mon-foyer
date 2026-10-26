@@ -4,8 +4,8 @@ Mon-Foyer est une application web mobile-first pour suivre les dépenses et reve
 
 | Partie | Stack |
 | --- | --- |
-| `apps/web` | Next.js 16 (App Router, Cache Components), React 19, Tailwind CSS 4, Recharts, client Better Auth |
-| `apps/api` | NestJS 12 (ESM), Prisma 7 (`@prisma/adapter-pg`), Better Auth, class-validator, Vitest, oxlint |
+| `apps/web` | Next.js 16 (App Router, Cache Components), React 19, Tailwind CSS 4, Recharts, Clerk (`@clerk/nextjs`) |
+| `apps/api` | NestJS 12 (ESM), Prisma 7 (`@prisma/adapter-pg`), Clerk (`@clerk/backend`), Cloudinary, class-validator, Vitest, oxlint |
 | `packages/shared` | Types et constantes partagés (énumérations, devise, formats d'API) |
 | Infra | PostgreSQL 17 (Docker Compose), Yarn 4 workspaces, TypeScript 6.0 |
 
@@ -25,8 +25,13 @@ yarn install
 
 # 1. Variables d'environnement (un seul .env à la racine)
 cp .env.example .env
-#    puis remplacer BETTER_AUTH_SECRET :  openssl rand -base64 32
-#    et choisir un POSTGRES_PASSWORD (le reporter dans DATABASE_URL)
+#    puis renseigner :
+#    - POSTGRES_PASSWORD (le reporter dans DATABASE_URL)
+#    - les clés Clerk (dashboard.clerk.com → API keys)
+#    - les clés Cloudinary (console.cloudinary.com → API Keys)
+#    L'API refuse de démarrer tant qu'une variable obligatoire manque.
+#    Next.js lit ce même fichier via le lien apps/web/.env → ../../.env,
+#    créé automatiquement par scripts/link-env.mjs avant dev / build / start.
 
 # 2. Base de données
 yarn db:up                 # PostgreSQL sur 127.0.0.1:5432
@@ -79,9 +84,10 @@ mon-foyer/
 │   ├── api/                       NestJS — préfixe /api
 │   │   ├── prisma/                schéma + migrations (contraintes CHECK incluses)
 │   │   └── src/
-│   │       ├── auth/              Better Auth + garde globale (@Public pour exempter)
-│   │       ├── users/             GET /users/me
-│   │       ├── households/        POST/GET /households, GET /households/:id(/members)
+│   │       ├── auth/              garde Clerk globale (@Public pour exempter), webhook /webhooks/clerk
+│   │       ├── users/             GET /users/me, synchronisation des utilisateurs Clerk
+│   │       ├── households/        POST/GET /households, GET /households/:id(/members), PUT/DELETE /households/:id/photo
+│   │       ├── media/             stockage des images (Cloudinary)
 │   │       ├── household-members/ requireMembership() : contrôle d'accès inter-foyers
 │   │       ├── invitations/       POST /households/:id/invitations, POST /invitations/accept
 │   │       ├── categories/        GET /categories
@@ -91,11 +97,11 @@ mon-foyer/
 │   │       └── common/            argent (Decimal), mois/fuseau, images, filtre d'erreurs
 │   └── web/                       Next.js
 │       └── src/
-│           ├── app/(auth)/        /login, /register
+│           ├── app/(auth)/        /login, /register (composants Clerk)
 │           ├── app/(app)/         /dashboard, /transactions(/new), /reports, /household, /settings
-│           ├── components/        ui, navigation, dashboard, transactions, charts, forms, auth
-│           ├── lib/               client auth, appels API serveur, formatage
-│           └── proxy.ts           redirection vers /login sans cookie de session
+│           ├── components/        ui, navigation, dashboard, transactions, household, charts, forms, auth
+│           ├── lib/               appels API (serveur et navigateur), formatage
+│           └── proxy.ts           clerkMiddleware : protège les pages de l'application
 ├── packages/shared/
 ├── docs/business-rules.md
 └── docker-compose.yml
@@ -103,18 +109,35 @@ mon-foyer/
 
 ### Flux d'authentification
 
-Le navigateur ne parle qu'à Next.js (port 3000). Les requêtes `/api/*` sont relayées vers NestJS par un *rewrite*. Les cookies de session sont donc first-party, et le navigateur n'a pas besoin de CORS.
+Clerk gère l'inscription, la connexion, les mots de passe et la sécurité des comptes. Les pages `/login` et `/register` affichent ses composants en français.
 
-Better Auth (dans NestJS) gère `/api/auth/*` : inscription, connexion, sessions en base, limitation de débit.
+Le navigateur ne parle qu'à Next.js (port 3000). Les requêtes `/api/*` sont relayées vers NestJS par un *rewrite*. Chaque appel à l'API porte le jeton de session Clerk (en-tête `Authorization: Bearer`) :
+- depuis un Server Component : `apiFetch()` (`lib/api.server.ts`) ;
+- depuis le navigateur : `useApi()` (`lib/use-api.ts`).
 
-Toutes les autres routes passent par `AuthGuard`, qui valide la session côté serveur. Le `proxy.ts` de Next.js n'est qu'une redirection de confort.
+Dans NestJS, `AuthGuard` valide chaque jeton avec `authenticateRequest` : signature, expiration et origine (`authorizedParties` = `WEB_ORIGIN`). Le `proxy.ts` de Next.js ne fait qu'une redirection de confort.
+
+L'utilisateur est copié dans la table `user` (son `id` est l'identifiant Clerk) :
+- à la réception des webhooks `user.created`, `user.updated` et `user.deleted`, dont la signature est vérifiée ;
+- sinon, à sa première requête authentifiée. En local, le webhook est donc facultatif.
+
+Pour recevoir le webhook en local, exposez l'API, par exemple avec `ngrok http 3001`. Déclarez ensuite `https://<id>.ngrok.app/api/webhooks/clerk` dans le dashboard Clerk.
+
+### Photos (Cloudinary)
+
+`PUT /api/households/:id/photo` (multipart, champ `photo`) est réservé aux `OWNER` et aux `ADMIN`. Le traitement se fait en trois étapes :
+1. Le fichier est lu en mémoire (2 Mo maximum).
+2. Son type réel est vérifié par signature binaire : JPEG, PNG ou WebP.
+3. Il est ensuite seulement envoyé à Cloudinary, dans `CLOUDINARY_FOLDER/households/<id>/photo`.
+
+La base ne stocke que l'identifiant public et la version de l'image. L'API renvoie une URL transformée : 256×256, recadrage automatique, format et qualité adaptés au navigateur.
 
 ## Décisions techniques
 
-- **Better Auth** plutôt qu'une authentification maison :
-  - mots de passe hachés et sessions révocables stockées en base ;
-  - rate limiting intégré ;
-  - fonctionne avec Next.js comme avec NestJS.
+- **Clerk** plutôt qu'une authentification maison :
+  - mots de passe, MFA, vérification d'e-mail et protection contre la force brute sont gérés par Clerk ;
+  - aucun secret d'authentification n'est stocké dans notre base.
+- **Cloudinary** pour les images : CDN, transformations et formats modernes, sans stockage de fichiers sur nos serveurs.
 - **Versions** : Prisma 7.10.1 plutôt que la 8.0, encore en release candidate. TypeScript 6.0.3 plutôt que la 7, trop récente pour l'outillage (typescript-eslint exige < 6.1).
 - **Templates officiels conservés** :
   - NestJS 12 : ESM, Vitest, oxlint ;
@@ -124,7 +147,7 @@ Toutes les autres routes passent par `AuthGuard`, qui valide la session côté s
 - **Argent** : `DECIMAL(15,2)` en base et `Prisma.Decimal` côté API. Les montants circulent en chaînes JSON : aucun calcul en flottant.
 - **Dates** : `occurredOn` est de type `DATE`, ce qui évite les décalages de fuseau sur les bornes de mois.
 - **Invariants en base** : des contraintes `CHECK` garantissent la séparation personnel/commun, des montants positifs et un propriétaire unique par catégorie. Des index uniques partiels portent sur le nom de catégorie.
-- **Identifiants** : UUID v7 pour le domaine (triables chronologiquement). Les tables d'identité gardent les identifiants générés par Better Auth.
+- **Identifiants** : UUID v7 pour le domaine (triables chronologiquement). Les utilisateurs gardent l'identifiant Clerk (`user_…`).
 - **Validation de la configuration** : l'API refuse de démarrer si le `.env` est invalide (class-validator).
 - **Requêtes entrantes** : `whitelist` et `forbidNonWhitelisted` rejettent tout champ inattendu. Helmet est activé, le corps JSON est limité à 100 ko, et le débit global est limité.
 
@@ -132,13 +155,13 @@ Toutes les autres routes passent par `AuthGuard`, qui valide la session côté s
 
 1. CRUD des transactions avec DTO (montant en chaîne, contrôle catégorie/foyer, `memberId` appartenant au foyer), suppression avec confirmation.
 2. Catégories par défaut créées avec un foyer et pour chaque utilisateur, plus leur CRUD.
-3. Upload de la photo du foyer : multer en mémoire, puis `assertValidImage`, puis stockage (disque local, ensuite S3 ou équivalent).
+3. Création d'un foyer depuis l'interface (avec photo).
 4. Interface d'invitation : génération du lien, page `/invite/[token]`, révocation.
 5. Bilans par catégorie et par membre, et graphique sur plusieurs mois (`MonthlyChart` est prêt).
 6. Sélecteur de contexte (personnel / foyer) dans l'interface.
 7. Tests e2e de l'API contre une base de test (Supertest), et tests de composants côté web.
 8. CI : `yarn check` et `prisma migrate deploy` sur une base éphémère.
 9. Avant la mise en production :
-   - vérification de l'e-mail et réinitialisation du mot de passe ;
-   - stockage Redis pour le rate limiting ;
+   - instance Clerk de production (clés `pk_live_` / `sk_live_`, domaine vérifié) et `CLOUDINARY_FOLDER` dédié ;
+   - stockage Redis pour le rate limiting de l'API ;
    - procédure de suppression de compte (les saisies communes bloquent la suppression via `onDelete: Restrict`).

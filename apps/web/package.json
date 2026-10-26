@@ -3,16 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
-    "start": "next start --port 3000",
-    "typecheck": "next typegen && tsc --noEmit",
+    "dev": "node ../../scripts/link-env.mjs && next dev --port 3000",
+    "build": "node ../../scripts/link-env.mjs && next build",
+    "start": "node ../../scripts/link-env.mjs && next start --port 3000",
+    "typecheck": "node ../../scripts/link-env.mjs && next typegen && tsc --noEmit",
     "lint": "eslint",
     "test": "echo \"Pas encore de tests frontend\""
   },
   "dependencies": {
+    "@clerk/localizations": "^4.24.1",
+    "@clerk/nextjs": "^7.9.20",
     "@mon-foyer/shared": "workspace:*",
-    "better-auth": "^1.7.12",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",

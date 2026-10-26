@@ -46,7 +46,7 @@ export class HouseholdMembersService {
         role: true,
         displayName: true,
         joinedAt: true,
-        user: { select: { id: true, name: true, image: true } },
+        user: { select: { id: true, name: true, imageUrl: true } },
       },
       orderBy: { joinedAt: 'asc' },
     });

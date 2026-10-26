@@ -37,23 +37,21 @@ enum InvitationStatus {
   EXPIRED
 }
 
-// ───────────────────── Identité (Better Auth) ─────────────────────
-// Les modèles User, Session, Account et Verification suivent le schéma
-// attendu par Better Auth (adaptateur Prisma). Ne pas renommer leurs champs.
+// ───────────────────────── Identité (Clerk) ─────────────────────────
+// L'authentification est déléguée à Clerk. Cette table est une copie locale
+// minimale du profil, synchronisée par webhook et à la première requête.
+// `id` est l'identifiant Clerk de l'utilisateur (ex. "user_2abc...").
 
 model User {
   id              String   @id
-  name            String
+  name            String   @db.VarChar(120)
   email           String   @unique
-  emailVerified   Boolean  @default(false)
-  image           String?
+  imageUrl        String?
   // Devise utilisée pour les transactions personnelles
   defaultCurrency String   @default("MGA") @db.Char(3)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  sessions             Session[]
-  accounts             Account[]
   memberships          HouseholdMember[]
   householdsCreated    Household[]       @relation("HouseholdCreator")
   invitationsSent      Invitation[]      @relation("InvitationSender")
@@ -65,68 +63,22 @@ model User {
   @@map("user")
 }
 
-model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("session")
-}
-
-model Account {
-  id                    String    @id
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  @@index([userId])
-  @@map("account")
-}
-
-model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([identifier])
-  @@map("verification")
-}
-
 // ─────────────────────────── Foyers ───────────────────────────
 
 model Household {
-  id          String   @id @default(uuid(7)) @db.Uuid
-  name        String   @db.VarChar(80)
-  // Clé de stockage de la photo (jamais une URL fournie telle quelle par le client)
-  photoKey    String?  @db.VarChar(255)
+  id            String   @id @default(uuid(7)) @db.Uuid
+  name          String   @db.VarChar(80)
+  // Photo hébergée sur Cloudinary : identifiant + version (l'URL est construite côté serveur)
+  photoPublicId String?  @db.VarChar(255)
+  photoVersion  Int?
   // Devise de référence du foyer : tous les totaux communs sont calculés dans cette devise
-  currency    String   @default("MGA") @db.Char(3)
+  currency      String   @default("MGA") @db.Char(3)
   // Fuseau IANA utilisé pour borner les mois des bilans
-  timezone    String   @default("Indian/Antananarivo") @db.VarChar(64)
-  createdById String?
-  createdBy   User?    @relation("HouseholdCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  timezone      String   @default("Indian/Antananarivo") @db.VarChar(64)
+  createdById   String?
+  createdBy     User?    @relation("HouseholdCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   members      HouseholdMember[]
   invitations  Invitation[]

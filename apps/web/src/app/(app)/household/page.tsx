@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { HouseholdPhoto } from "@/components/household/household-photo";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { EmptyState, LoadingState } from "@/components/ui/states";
@@ -11,10 +12,15 @@ interface HouseholdSummary {
   id: string;
   name: string;
   currency: string;
-  members: { role: string }[];
+  photoUrl: string | null;
+  myRole: "OWNER" | "ADMIN" | "MEMBER";
 }
 
-const roleLabel: Record<string, string> = { OWNER: "Propriétaire", ADMIN: "Administrateur", MEMBER: "Membre" };
+const roleLabel: Record<HouseholdSummary["myRole"], string> = {
+  OWNER: "Propriétaire",
+  ADMIN: "Administrateur",
+  MEMBER: "Membre",
+};
 
 async function Households() {
   const households = await apiFetch<HouseholdSummary[]>("/households");
@@ -30,12 +36,21 @@ async function Households() {
     <ul className="flex flex-col gap-3">
       {households.map((h) => (
         <li key={h.id}>
-          <Card className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">{h.name}</p>
-              <p className="text-xs text-muted">Devise : {h.currency}</p>
+          <Card className="flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-lg font-semibold">{h.name}</p>
+                <p className="text-xs text-muted">
+                  {roleLabel[h.myRole]} · Devise {h.currency}
+                </p>
+              </div>
             </div>
-            <span className="text-xs text-muted">{roleLabel[h.members[0]?.role ?? "MEMBER"]}</span>
+            <HouseholdPhoto
+              householdId={h.id}
+              name={h.name}
+              photoUrl={h.photoUrl}
+              canEdit={h.myRole === "OWNER" || h.myRole === "ADMIN"}
+            />
           </Card>
         </li>
       ))}
