@@ -1,0 +1,41 @@
+{
+  "name": "mon-foyer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Gestion des dépenses et revenus personnels et du foyer",
+  "packageManager": "yarn@4.18.1+sha512.b2e1e7524f654f2749d32b4ebcb4622473cb5bcbc485df2007e12a154e50162a4d795526768bc5f5b8f81717bfd79deb2472813d86fb5ae2eb551fa9c872b08f",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "yarn build:shared && yarn workspaces foreach -Api --include '@mon-foyer/{api,web}' run dev",
+    "dev:api": "yarn workspace @mon-foyer/api dev",
+    "dev:web": "yarn workspace @mon-foyer/web dev",
+    "build:shared": "yarn workspace @mon-foyer/shared build",
+    "build": "yarn workspaces foreach -Apt run build",
+    "typecheck": "yarn build:shared && yarn workspaces foreach -Ap run typecheck",
+    "lint": "yarn workspaces foreach -Ap run lint",
+    "test": "yarn build:shared && yarn workspaces foreach -Ap run test",
+    "check": "yarn typecheck && yarn lint && yarn test",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "yarn workspace @mon-foyer/api prisma migrate dev",
+    "db:generate": "yarn workspace @mon-foyer/api prisma generate",
+    "db:studio": "yarn workspace @mon-foyer/api prisma studio"
+  },
+  "dependenciesMeta": {
+    "@prisma/engines": {
+      "built": true
+    },
+    "prisma": {
+      "built": true
+    },
+    "unrs-resolver": {
+      "built": true
+    }
+  }
+}

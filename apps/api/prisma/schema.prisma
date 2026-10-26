@@ -1,0 +1,249 @@
+// Schéma de données Mon-Foyer.
+// Règles métier : voir docs/business-rules.md
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────── Énumérations ─────────────────────────
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+}
+
+enum TransactionScope {
+  PERSONAL // visible uniquement par son propriétaire
+  HOUSEHOLD // visible par les membres du foyer concerné
+}
+
+enum HouseholdRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+// ───────────────────── Identité (Better Auth) ─────────────────────
+// Les modèles User, Session, Account et Verification suivent le schéma
+// attendu par Better Auth (adaptateur Prisma). Ne pas renommer leurs champs.
+
+model User {
+  id              String   @id
+  name            String
+  email           String   @unique
+  emailVerified   Boolean  @default(false)
+  image           String?
+  // Devise utilisée pour les transactions personnelles
+  defaultCurrency String   @default("MGA") @db.Char(3)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sessions             Session[]
+  accounts             Account[]
+  memberships          HouseholdMember[]
+  householdsCreated    Household[]       @relation("HouseholdCreator")
+  invitationsSent      Invitation[]      @relation("InvitationSender")
+  invitationsAccepted  Invitation[]      @relation("InvitationAcceptor")
+  personalCategories   Category[]
+  transactionsAuthored Transaction[]     @relation("TransactionAuthor")
+  personalTransactions Transaction[]     @relation("TransactionOwner")
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─────────────────────────── Foyers ───────────────────────────
+
+model Household {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  name        String   @db.VarChar(80)
+  // Clé de stockage de la photo (jamais une URL fournie telle quelle par le client)
+  photoKey    String?  @db.VarChar(255)
+  // Devise de référence du foyer : tous les totaux communs sont calculés dans cette devise
+  currency    String   @default("MGA") @db.Char(3)
+  // Fuseau IANA utilisé pour borner les mois des bilans
+  timezone    String   @default("Indian/Antananarivo") @db.VarChar(64)
+  createdById String?
+  createdBy   User?    @relation("HouseholdCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members      HouseholdMember[]
+  invitations  Invitation[]
+  categories   Category[]
+  transactions Transaction[]
+
+  @@map("household")
+}
+
+model HouseholdMember {
+  id          String        @id @default(uuid(7)) @db.Uuid
+  householdId String        @db.Uuid
+  household   Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        HouseholdRole @default(MEMBER)
+  // Nom affiché dans ce foyer (optionnel, sinon nom du compte)
+  displayName String?       @db.VarChar(80)
+  joinedAt    DateTime      @default(now())
+
+  // Transactions communes qui concernent ce membre
+  transactions Transaction[]
+
+  @@unique([householdId, userId])
+  @@index([userId])
+  @@map("household_member")
+}
+
+model Invitation {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  householdId  String           @db.Uuid
+  household    Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  invitedById  String?
+  invitedBy    User?            @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: SetNull)
+  // Optionnel : restreint l'invitation à une adresse précise
+  email        String?
+  role         HouseholdRole    @default(MEMBER)
+  // Seul le hash SHA-256 du token est stocké ; le token brut n'est montré qu'une fois
+  tokenHash    String           @unique @db.Char(64)
+  status       InvitationStatus @default(PENDING)
+  expiresAt    DateTime
+  acceptedById String?
+  acceptedBy   User?            @relation("InvitationAcceptor", fields: [acceptedById], references: [id], onDelete: SetNull)
+  acceptedAt   DateTime?
+  createdAt    DateTime         @default(now())
+
+  @@index([householdId, status])
+  @@map("invitation")
+}
+
+// ────────────────────── Catégories & Transactions ──────────────────────
+
+/// Une catégorie appartient soit à un foyer (catégorie commune),
+/// soit à un utilisateur (catégorie personnelle). Contrainte CHECK en migration.
+model Category {
+  id          String          @id @default(uuid(7)) @db.Uuid
+  name        String          @db.VarChar(60)
+  type        TransactionType
+  icon        String?         @db.VarChar(40)
+  color       String?         @db.VarChar(9)
+  householdId String?         @db.Uuid
+  household   Household?      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  ownerId     String?
+  owner       User?           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  archivedAt  DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  transactions Transaction[]
+
+  @@index([householdId, type])
+  @@index([ownerId, type])
+  @@map("category")
+}
+
+/// Dépense ou revenu.
+/// - PERSONAL  : ownerId requis, householdId et memberId nuls.
+/// - HOUSEHOLD : householdId requis, ownerId nul, memberId optionnel.
+/// Ces invariants sont garantis par une contrainte CHECK (voir migration).
+model Transaction {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  type        TransactionType
+  scope       TransactionScope
+  // Montant toujours positif ; le sens est donné par `type`. Jamais de float.
+  amount      Decimal          @db.Decimal(15, 2)
+  currency    String           @db.Char(3)
+  description String           @db.VarChar(255)
+  // Date calendaire (sans heure) dans le fuseau du foyer / de l'utilisateur
+  occurredOn  DateTime         @db.Date
+
+  // Qui a saisi la transaction (audit). Restrict : un compte ne peut être
+  // supprimé sans traitement préalable de ses saisies communes.
+  authorId String
+  author   User   @relation("TransactionAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  // Propriétaire d'une transaction personnelle
+  ownerId String?
+  owner   User?   @relation("TransactionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Foyer d'une transaction commune
+  householdId String?    @db.Uuid
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  // Membre concerné (distinct de l'auteur), pour une transaction commune
+  memberId String?          @db.Uuid
+  member   HouseholdMember? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  categoryId String   @db.Uuid
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([householdId, occurredOn])
+  @@index([ownerId, occurredOn])
+  @@index([memberId])
+  @@index([categoryId])
+  @@index([authorId])
+  @@map("transaction")
+}
