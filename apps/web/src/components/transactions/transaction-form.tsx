@@ -1,9 +1,15 @@
 "use client";
 
-import { MONEY_PATTERN, type TransactionScope, type TransactionType } from "@mon-foyer/shared";
+import {
+  DEFAULT_CURRENCY,
+  MONEY_PATTERN,
+  type TransactionScope,
+  type TransactionType,
+} from "@mon-foyer/shared";
 import { useState } from "react";
 import { Field, inputClass } from "@/components/forms/field";
 import { Button } from "@/components/ui/button";
+import { AmountInput } from "./amount-input";
 
 export interface TransactionFormValues {
   type: TransactionType;
@@ -22,10 +28,12 @@ export interface TransactionFormValues {
 export function TransactionForm({
   categories,
   canUseHousehold,
+  currency = DEFAULT_CURRENCY,
   onSubmit,
 }: {
   categories: { value: string; label: string }[];
   canUseHousehold: boolean;
+  currency?: string;
   onSubmit?: (values: TransactionFormValues) => Promise<void>;
 }) {
   const [type, setType] = useState<TransactionType>("EXPENSE");
@@ -59,36 +67,34 @@ export function TransactionForm({
 
   return (
     <form action={handleSubmit} className="flex flex-col gap-4">
-      <fieldset className="grid grid-cols-2 gap-2">
+      {/* Rouge = dépense, vert = revenu : la couleur confirme le choix d'un coup d'œil */}
+      <fieldset className="grid grid-cols-2 gap-1 rounded-2xl bg-surface-muted p-1">
         <legend className="sr-only">Type</legend>
-        {(["EXPENSE", "INCOME"] as const).map((value) => (
-          <Button
-            key={value}
-            type="button"
-            variant={type === value ? "primary" : "secondary"}
-            aria-pressed={type === value}
-            onClick={() => setType(value)}
-          >
-            {value === "EXPENSE" ? "Dépense" : "Revenu"}
-          </Button>
-        ))}
+        {(["EXPENSE", "INCOME"] as const).map((value) => {
+          const selected = type === value;
+          const tone = value === "EXPENSE" ? "bg-expense text-white" : "bg-income text-white";
+          return (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => setType(value)}
+              className={`min-h-11 rounded-xl text-sm font-semibold transition ${
+                selected ? `${tone} shadow-sm` : "text-muted hover:text-foreground"
+              }`}
+            >
+              {value === "EXPENSE" ? "Dépense" : "Revenu"}
+            </button>
+          );
+        })}
       </fieldset>
 
-      <Field
-        id="amount"
-        name="amount"
-        label="Montant"
-        inputMode="decimal"
-        autoComplete="off"
-        required
-        placeholder="0"
-        error={error}
-      />
+      <AmountInput type={type} currency={currency} error={error} />
       <Field id="description" name="description" label="Description" required maxLength={255} />
       <Field id="occurredOn" name="occurredOn" label="Date" type="date" required />
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="categoryId" className="text-sm font-medium">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="categoryId" className="text-sm font-semibold">
           Catégorie
         </label>
         <select id="categoryId" name="categoryId" required className={inputClass}>
@@ -103,16 +109,17 @@ export function TransactionForm({
 
       {canUseHousehold && (
         <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium">Visibilité</legend>
+          <legend className="text-sm font-semibold">Visibilité</legend>
           {(
             [
               ["PERSONAL", "Personnelle — visible par moi uniquement"],
               ["HOUSEHOLD", "Commune — visible par les membres du foyer"],
             ] as const
           ).map(([value, label]) => (
-            <label key={value} className="flex min-h-11 items-center gap-3 rounded-xl border border-border px-3">
+            <label key={value} className="flex min-h-12 items-center gap-3 rounded-2xl border border-border bg-surface px-4 has-checked:border-primary has-checked:bg-primary-soft">
               <input
                 type="radio"
+                className="size-4 accent-primary"
                 name="scope"
                 value={value}
                 checked={scope === value}

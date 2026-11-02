@@ -1,43 +1,70 @@
 @import "tailwindcss";
 
+/*
+ * Palette « Indigo moderne ».
+ * Règle d'usage :
+ *  - primary  : actions (boutons, onglet actif, liens) — jamais pour un montant
+ *  - income   : revenus et soldes positifs
+ *  - expense  : dépenses et soldes négatifs
+ *  - *-soft   : fonds légers associés (pastilles, icônes)
+ */
 :root {
-  --background: #f8fafc;
+  --background: #f6f7fb;
   --surface: #ffffff;
-  --foreground: #0f172a;
-  --muted: #64748b;
-  --border: #e2e8f0;
-  --primary: #0f766e;
+  --surface-muted: #eef0f6;
+  --foreground: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-soft: #eef2ff;
   --primary-foreground: #ffffff;
-  --income: #15803d;
-  --expense: #b91c1c;
-  --danger: #b91c1c;
+
+  --income: #059669;
+  --income-soft: #ecfdf5;
+  --expense: #e11d48;
+  --expense-soft: #fff1f2;
+  --danger: #e11d48;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #020617;
-    --surface: #0f172a;
-    --foreground: #f1f5f9;
-    --muted: #94a3b8;
-    --border: #1e293b;
-    --primary: #2dd4bf;
-    --primary-foreground: #042f2e;
-    --income: #4ade80;
-    --expense: #f87171;
-    --danger: #f87171;
+    --background: #0b0d17;
+    --surface: #151827;
+    --surface-muted: #1e2235;
+    --foreground: #f3f4f6;
+    --muted: #9ca3af;
+    --border: #262a3d;
+
+    --primary: #818cf8;
+    --primary-hover: #a5b4fc;
+    --primary-soft: #1e1b4b;
+    --primary-foreground: #0b0d17;
+
+    --income: #34d399;
+    --income-soft: #052e25;
+    --expense: #fb7185;
+    --expense-soft: #3b0a17;
+    --danger: #fb7185;
   }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
   --color-primary-foreground: var(--primary-foreground);
   --color-income: var(--income);
+  --color-income-soft: var(--income-soft);
   --color-expense: var(--expense);
+  --color-expense-soft: var(--expense-soft);
   --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
 }
@@ -45,6 +72,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Montants alignés et lisibles */

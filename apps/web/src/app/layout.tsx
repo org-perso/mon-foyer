@@ -1,3 +1,5 @@
+import { ClerkProvider } from "@clerk/nextjs";
+import { frFR } from "@clerk/localizations";
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
@@ -16,15 +18,33 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
-    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d17" },
   ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
-    </html>
+    <ClerkProvider
+      localization={frFR}
+      appearance={{
+        variables: {
+          // Clerk dérive ses nuances de ces couleurs : valeurs fixes, alignées sur globals.css
+          colorPrimary: "#4f46e5",
+          colorDanger: "#e11d48",
+          colorSuccess: "#059669",
+          borderRadius: "1rem",
+          fontFamily: "var(--font-geist-sans)",
+        },
+        elements: {
+          cardBox: "shadow-xl shadow-indigo-500/10 rounded-3xl",
+          formButtonPrimary: "min-h-11",
+        },
+      }}
+    >
+      <html lang="fr" className={`${geistSans.variable} h-full antialiased`}>
+        <body className="flex min-h-full flex-col font-sans">{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }

@@ -28,13 +28,36 @@ export class EnvironmentVariables {
   @IsUrl({ require_tld: false })
   WEB_ORIGIN: string;
 
+  // --- Clerk ---
+  @Matches(/^sk_(test|live)_\w+/, { message: 'CLERK_SECRET_KEY manquante ou invalide (sk_test_… / sk_live_…)' })
+  CLERK_SECRET_KEY: string;
+
+  @Matches(/^pk_(test|live)_\w+/, {
+    message: 'CLERK_PUBLISHABLE_KEY manquante ou invalide (pk_test_… / pk_live_…)',
+  })
+  CLERK_PUBLISHABLE_KEY: string;
+
+  @Matches(/^whsec_\S+/, { message: 'CLERK_WEBHOOK_SIGNING_SECRET manquant ou invalide (whsec_…)' })
+  CLERK_WEBHOOK_SIGNING_SECRET: string;
+
+  // --- Cloudinary ---
   @IsString()
-  @MinLength(32, { message: 'BETTER_AUTH_SECRET doit contenir au moins 32 caractères' })
-  BETTER_AUTH_SECRET: string;
+  @MinLength(1, { message: 'CLOUDINARY_CLOUD_NAME manquant' })
+  CLOUDINARY_CLOUD_NAME: string;
 
-  @IsUrl({ require_tld: false })
-  BETTER_AUTH_URL: string;
+  @IsString()
+  @MinLength(1, { message: 'CLOUDINARY_API_KEY manquante' })
+  CLOUDINARY_API_KEY: string;
 
+  @IsString()
+  @MinLength(1, { message: 'CLOUDINARY_API_SECRET manquant' })
+  CLOUDINARY_API_SECRET: string;
+
+  /** Dossier racine des images dans Cloudinary (séparer dev / prod) */
+  @Matches(/^[\w-]+(\/[\w-]+)*$/)
+  CLOUDINARY_FOLDER = 'mon-foyer-dev';
+
+  
   @Length(3, 3)
   @Matches(/^[A-Z]{3}$/)
   DEFAULT_CURRENCY = 'MGA';

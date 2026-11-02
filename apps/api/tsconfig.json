@@ -22,7 +22,7 @@
     "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["vitest/globals", "node"]
+    "types": ["vitest/globals", "node", "multer"]
   },
   "exclude": ["node_modules", "dist"]
 }

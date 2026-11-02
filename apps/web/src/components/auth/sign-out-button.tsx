@@ -1,25 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { SignOutButton as ClerkSignOutButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth-client";
 
 export function SignOutButton() {
-  const router = useRouter();
-  const [pending, setPending] = useState(false);
   return (
-    <Button
-      variant="secondary"
-      loading={pending}
-      onClick={async () => {
-        setPending(true);
-        await authClient.signOut();
-        router.replace("/login");
-        router.refresh();
-      }}
-    >
-      Se déconnecter
-    </Button>
+    <ClerkSignOutButton redirectUrl="/login">
+      <Button variant="secondary">Se déconnecter</Button>
+    </ClerkSignOutButton>
   );
 }

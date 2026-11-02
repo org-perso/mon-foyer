@@ -1,13 +1,17 @@
+import { ArrowLeftRight, Home, PieChart, Settings, Users, type LucideIcon } from "lucide-react";
+
 export interface NavItem {
   href: string;
   label: string;
-  icon: string;
+  icon: LucideIcon;
 }
 
+/** Onglets de la barre mobile (le bouton « Ajouter » central est séparé). */
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Accueil", icon: "◉" },
-  { href: "/transactions", label: "Transactions", icon: "≡" },
-  { href: "/transactions/new", label: "Ajouter", icon: "+" },
-  { href: "/reports", label: "Bilans", icon: "◔" },
-  { href: "/household", label: "Foyer", icon: "⌂" },
+  { href: "/dashboard", label: "Accueil", icon: Home },
+  { href: "/transactions", label: "Historique", icon: ArrowLeftRight },
+  { href: "/reports", label: "Bilans", icon: PieChart },
+  { href: "/household", label: "Foyer", icon: Users },
 ];
+
+export const SETTINGS_ITEM: NavItem = { href: "/settings", label: "Réglages", icon: Settings };

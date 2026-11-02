@@ -5,6 +5,7 @@ import {
   HouseholdMembersService,
   MANAGER_ROLES,
 } from '../household-members/household-members.service.js';
+import { assertCanJoinHousehold } from '../household-members/household-limit.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { AuthenticatedUser } from '../auth/decorators.js';
 import type { CreateInvitationDto } from './dto/invitation.dto.js';
@@ -62,6 +63,7 @@ export class InvitationsService {
       if (existing) {
         throw new ConflictException('Vous êtes déjà membre de ce foyer.');
       }
+      await assertCanJoinHousehold(tx, user.id);
       // Passage PENDING → ACCEPTED conditionnel : empêche une double utilisation concurrente
       const { count } = await tx.invitation.updateMany({
         where: { id: invitation.id, status: 'PENDING' },
