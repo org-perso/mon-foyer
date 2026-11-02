@@ -1,4 +1,4 @@
-import { GoneException, NotFoundException } from '@nestjs/common';
+import { ConflictException, GoneException, NotFoundException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { HouseholdMembersService } from '../household-members/household-members.service.js';
 import type { PrismaService } from '../prisma/prisma.service.js';
@@ -14,7 +14,12 @@ function setup(invitation: Record<string, unknown> | null) {
       update: vi.fn(),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
-    householdMember: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    householdMember: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      count: vi.fn().mockResolvedValue(0),
+      create: vi.fn(),
+    },
+    $executeRaw: vi.fn(),
   };
   const prisma = {
     $transaction: (fn: (t: typeof tx) => unknown) => fn(tx),
@@ -82,6 +87,14 @@ describe('InvitationsService.accept', () => {
   it('accepte une adresse identique à la casse près', async () => {
     const { service } = setup(pending({ email: 'b@example.com' }));
     await expect(service.accept(user, 'x'.repeat(43))).resolves.toBeDefined();
+  });
+
+  it('refuse si l’utilisateur fait déjà partie d’un autre foyer', async () => {
+    const { service, tx } = setup(pending());
+    tx.householdMember.count.mockResolvedValue(1);
+    await expect(service.accept(user, 'x'.repeat(43))).rejects.toBeInstanceOf(ConflictException);
+    expect(tx.invitation.updateMany).not.toHaveBeenCalled();
+    expect(tx.householdMember.create).not.toHaveBeenCalled();
   });
 
   it('refuse en cas d’utilisation concurrente', async () => {

@@ -6,6 +6,7 @@ import {
   HouseholdMembersService,
   MANAGER_ROLES,
 } from '../household-members/household-members.service.js';
+import { assertCanJoinHousehold } from '../household-members/household-limit.js';
 import { CloudinaryService } from '../media/cloudinary.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateHouseholdDto } from './dto/create-household.dto.js';
@@ -39,17 +40,23 @@ export class HouseholdsService {
     private readonly config: ConfigService<EnvironmentVariables, true>,
   ) {}
 
-  /** Crée le foyer et inscrit son créateur comme OWNER, de façon atomique. */
+  /**
+   * Crée le foyer et inscrit son créateur comme OWNER, de façon atomique,
+   * dans la limite de foyers par utilisateur.
+   */
   async create(userId: string, dto: CreateHouseholdDto) {
-    const household = await this.prisma.household.create({
-      data: {
-        name: dto.name,
-        currency: dto.currency ?? this.config.get('DEFAULT_CURRENCY', { infer: true }),
-        timezone: dto.timezone ?? this.config.get('APP_TIMEZONE', { infer: true }),
-        createdById: userId,
-        members: { create: { userId, role: 'OWNER' } },
-      },
-      select: householdSelect,
+    const household = await this.prisma.$transaction(async (tx) => {
+      await assertCanJoinHousehold(tx, userId);
+      return tx.household.create({
+        data: {
+          name: dto.name,
+          currency: dto.currency ?? this.config.get('DEFAULT_CURRENCY', { infer: true }),
+          timezone: dto.timezone ?? this.config.get('APP_TIMEZONE', { infer: true }),
+          createdById: userId,
+          members: { create: { userId, role: 'OWNER' } },
+        },
+        select: householdSelect,
+      });
     });
     return { ...this.toResponse(household), myRole: 'OWNER' as const };
   }

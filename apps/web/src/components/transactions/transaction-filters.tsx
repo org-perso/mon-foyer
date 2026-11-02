@@ -8,7 +8,7 @@ export interface FilterOption {
 }
 
 const fieldClass =
-  "min-h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm focus-visible:outline-2 focus-visible:outline-primary";
+  "min-h-11 w-full rounded-2xl border border-border bg-surface px-3 text-sm focus:border-primary focus:ring-4 focus:ring-primary/15 focus:outline-none";
 
 /** Filtres synchronisés avec l'URL (partageables, compatibles avec le rendu serveur). */
 export function TransactionFilters({

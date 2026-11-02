@@ -22,6 +22,15 @@ export const HouseholdRole = {
 } as const;
 export type HouseholdRole = (typeof HouseholdRole)[keyof typeof HouseholdRole];
 
+/**
+ * Nombre maximal de foyers par utilisateur. Le modèle de données en accepte
+ * plusieurs ; la limite à 1 simplifie l'interface pendant la phase de test.
+ */
+export const MAX_HOUSEHOLDS_PER_USER = 1;
+
+/** Devises proposées à la création d'un foyer. */
+export const SUPPORTED_CURRENCIES = ['MGA', 'EUR', 'USD'] as const;
+
 /** Devise de référence initiale (ISO 4217). L'ariary n'a pas de subdivision utilisée. */
 export const DEFAULT_CURRENCY = 'MGA';
 export const DEFAULT_TIMEZONE = 'Indian/Antananarivo';

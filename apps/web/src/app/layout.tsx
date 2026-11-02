@@ -18,8 +18,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
-    { media: "(prefers-color-scheme: dark)", color: "#020617" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d17" },
   ],
 };
 
@@ -29,13 +29,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       localization={frFR}
       appearance={{
         variables: {
-          colorPrimary: "var(--primary)",
-          colorBackground: "var(--surface)",
-          colorForeground: "var(--foreground)",
-          colorMutedForeground: "var(--muted)",
-          colorDanger: "var(--danger)",
-          borderRadius: "0.75rem",
+          // Clerk dérive ses nuances de ces couleurs : valeurs fixes, alignées sur globals.css
+          colorPrimary: "#4f46e5",
+          colorDanger: "#e11d48",
+          colorSuccess: "#059669",
+          borderRadius: "1rem",
           fontFamily: "var(--font-geist-sans)",
+        },
+        elements: {
+          cardBox: "shadow-xl shadow-indigo-500/10 rounded-3xl",
+          formButtonPrimary: "min-h-11",
         },
       }}
     >

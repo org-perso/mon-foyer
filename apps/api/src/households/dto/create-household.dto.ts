@@ -1,14 +1,15 @@
+import { SUPPORTED_CURRENCIES } from '@mon-foyer/shared';
 import { Transform } from 'class-transformer';
-import { IsOptional, IsString, IsTimeZone, Length, Matches } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsTimeZone, Length } from 'class-validator';
 
 export class CreateHouseholdDto {
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value))
   @IsString()
-  @Length(1, 80)
+  @Length(2, 80, { message: 'Le nom du foyer doit contenir entre 2 et 80 caractères.' })
   name: string;
 
   @IsOptional()
-  @Matches(/^[A-Z]{3}$/, { message: 'currency doit être un code ISO 4217 (ex. MGA)' })
+  @IsIn(SUPPORTED_CURRENCIES, { message: `Devise non prise en charge (${SUPPORTED_CURRENCIES.join(', ')}).` })
   currency?: string;
 
   @IsOptional()

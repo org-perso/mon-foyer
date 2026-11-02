@@ -72,7 +72,7 @@ export function HouseholdPhoto({
 
   return (
     <div className="flex items-center gap-4">
-      <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl bg-primary/10">
+      <div className="relative size-16 shrink-0 overflow-hidden rounded-2xl bg-primary-soft">
         {photoUrl ? (
           <Image src={photoUrl} alt={`Photo du foyer ${name}`} fill sizes="64px" className="object-cover" />
         ) : (

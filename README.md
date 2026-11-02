@@ -51,7 +51,7 @@ curl http://localhost:3001/api/health    # API directe
 curl http://localhost:3000/api/health    # via le proxy Next.js
 ```
 
-La page d'accueil http://localhost:3000 affiche « API opérationnelle · base de données connectée ».
+Les deux appels doivent renvoyer `{"status":"ok", ..., "database":"up"}`.
 
 ## Commandes
 

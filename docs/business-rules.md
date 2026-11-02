@@ -8,6 +8,7 @@ Mon-Foyer est un outil de **suivi** financier. Il ne déplace jamais d'argent r�
 
 1. **Création et invitation** — Un utilisateur peut créer un foyer ; il en devient `OWNER`. Un `OWNER` ou un `ADMIN` peut inviter une personne (son conjoint, par exemple). L'invité rejoint le foyer avec le rôle prévu par l'invitation (`MEMBER` ou `ADMIN`, jamais `OWNER`).
 2. **Plusieurs foyers** — Un utilisateur peut appartenir à plusieurs foyers (`HouseholdMember` unique sur le couple foyer + utilisateur). Les données de deux foyers ne sont jamais agrégées ensemble : chaque requête porte sur **un seul contexte**, soit l'espace personnel, soit un foyer précis.
+   - **Phase de test : un seul foyer par utilisateur** (`MAX_HOUSEHOLDS_PER_USER = 1` dans `packages/shared`). L'API refuse avec une erreur `409` une création ou une invitation acceptée qui dépasserait la limite. La vérification se fait dans une transaction, sous un verrou PostgreSQL par utilisateur, ce qui bloque aussi les demandes simultanées. Pour passer au multi-foyer, il suffit d'augmenter cette constante et d'ajouter un sélecteur de foyer dans l'interface.
 
 ## Visibilité
 
